@@ -1,26 +1,84 @@
+# signup.py
+import re
 import flet as ft
+
+def is_valid_password(password):
+    if not 8 <= len(password) <= 12:
+        return False
+    count = 0
+    if re.search(r'[A-Za-z]', password):
+        count += 1
+    if re.search(r'\d', password):
+        count += 1
+    if re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+        count += 1
+    return count >= 2
 
 def signup_screen(page: ft.Page):
     def back_to_login(e):
         page.go("/login")
+
+    def go_to_verification(e):
+        check_password_validity()
+        check_password_match()
+        if (
+            email.value and
+            is_valid_password(password.value) and
+            password.value == confirm_password.value and
+            terms1.value and terms2.value and terms3.value
+        ):
+            page.go(f"/email_verification_sent?email={email.value}")
+        else:
+            page.snack_bar = ft.SnackBar(ft.Text("모든 필수 항목을 확인해주세요."))
+            page.snack_bar.open = True
+            page.update()
 
     email = ft.TextField(
         hint_text="이메일을 입력하세요.",
         width=page.width * 0.9,
         border_radius=10
     )
+
+    password_warning = ft.Text(
+        "영문자, 숫자, 특수문자 중 최소 2가지 이상 조합하여 8~12자리로 설정 가능합니다",
+        size=12,
+        color=ft.colors.RED,
+        visible=False
+    )
+
+    password_match_warning = ft.Text(
+        "비밀번호가 일치하지 않습니다.",
+        size=12,
+        color=ft.colors.RED,
+        visible=False
+    )
+
+    def check_password_validity(e=None):
+        password_warning.visible = not is_valid_password(password.value)
+        page.update()
+
+    def check_password_match(e=None):
+        password_match_warning.visible = (
+            confirm_password.value != "" and password.value != confirm_password.value
+        )
+        page.update()
+
     password = ft.TextField(
         hint_text="비밀번호 입력",
         password=True,
         width=page.width * 0.9,
-        border_radius=10
+        border_radius=10,
+        on_blur=check_password_validity
     )
+
     confirm_password = ft.TextField(
         hint_text="비밀번호 확인",
         password=True,
         width=page.width * 0.9,
-        border_radius=10
+        border_radius=10,
+        on_change=check_password_match
     )
+
     birth = ft.TextField(
         hint_text="YYYY-MM-DD",
         width=page.width * 0.9,
@@ -37,74 +95,50 @@ def signup_screen(page: ft.Page):
         width=page.width * 0.9
     )
 
-    # 약관 체크박스들 선언
     terms_all = ft.Checkbox(label="필수약관 모두 동의")
-    terms1 = ft.Checkbox(label="(필수) Allert Sign 이용약관")
-    terms2 = ft.Checkbox(label="(필수) Allert Sign 개인정보 수집 및 이용에 대한 동의")
-    terms3 = ft.Checkbox(label="(필수) Allert Sign 알레르기 정보 제공 및 면책 조항")
+    terms1 = ft.Checkbox(label="(필수) 이용약관")
+    terms2 = ft.Checkbox(label="(필수) 개인정보 수집 및 이용에 대한 동의")
+    terms3 = ft.Checkbox(label="(필수) 알레르기 정보 제공 및 면책 조항")
 
-    # 전체 약관 체크 상태 변경 시 실행될 함수
     def terms_all_changed(e):
         terms1.value = terms_all.value
         terms2.value = terms_all.value
         terms3.value = terms_all.value
         page.update()
 
-    # 개별 약관 변경 시 전체 체크박스 상태 업데이트
     def update_terms_all_state(e):
         terms_all.value = terms1.value and terms2.value and terms3.value
         page.update()
 
-    # 이벤트 핸들러 연결
     terms_all.on_change = terms_all_changed
     terms1.on_change = update_terms_all_state
     terms2.on_change = update_terms_all_state
     terms3.on_change = update_terms_all_state
 
-    # '보기' 버튼과 함께 Row로 구성
-    terms1_row = ft.Row(
-        [
-            terms1,
-            ft.TextButton("보기", on_click=lambda e: page.go("/terms1"))
-        ],
-        alignment=ft.MainAxisAlignment.SPACE_BETWEEN
-    )
-    terms2_row = ft.Row(
-        [
-            terms2,
-            ft.TextButton("보기", on_click=lambda e: page.go("/terms2"))
-        ],
-        alignment=ft.MainAxisAlignment.SPACE_BETWEEN
-    )
-    terms3_row = ft.Row(
-        [
-            terms3,
-            ft.TextButton("보기", on_click=lambda e: page.go("/terms3"))
-        ],
-        alignment=ft.MainAxisAlignment.SPACE_BETWEEN
-    )
+    terms1_row = ft.Row([terms1, ft.TextButton("보기", on_click=lambda e: page.go("/terms1"))], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
+    terms2_row = ft.Row([terms2, ft.TextButton("보기", on_click=lambda e: page.go("/terms2"))], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
+    terms3_row = ft.Row([terms3, ft.TextButton("보기", on_click=lambda e: page.go("/terms3"))], alignment=ft.MainAxisAlignment.SPACE_BETWEEN)
 
     register_button = ft.ElevatedButton(
         text="다 음",
         bgcolor=ft.Colors.GREEN,
         color=ft.Colors.WHITE,
         width=page.width * 0.9,
-        height=50
+        height=50,
+        on_click=go_to_verification
     )
 
     return ft.View(
         "/signup",
         controls=[
-            ft.AppBar(
-                title=ft.Text("회원가입"),
-                leading=ft.IconButton(icon=ft.icons.ARROW_BACK, on_click=back_to_login),
-                bgcolor=ft.Colors.WHITE
-            ),
+            ft.AppBar(title=ft.Text("회원가입"), leading=ft.IconButton(icon=ft.icons.ARROW_BACK, on_click=back_to_login), bgcolor=ft.Colors.WHITE),
             ft.Column(
                 [
                     email,
                     password,
+                    password_warning,
                     confirm_password,
+                    password_match_warning,
                     birth,
                     gender_toggle,
                     ft.Text("ALLERT SIGN", size=14, weight="bold", color=ft.Colors.GREEN),
